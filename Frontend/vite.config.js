@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [react(),
     tailwindcss(),
   ],
-  server:{
-    host:"0.0.0.0"
+   preview: {
+    host: "0.0.0.0",
+    allowedHosts: ["perplexity-frontend-9e0x.onrender.com"]
   }
 })
