@@ -37,7 +37,7 @@ import { sendEmail } from "../services/mail.services.js";
         html:`<p>Hi ${username},</p>
               <h1>Welcome to our app</h1>
               <p>We are excited to have you on board. Please verify your email by clicking the link below:</p>
-              <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerifyToken}">Verify Email</a>
+              <a href="https://perplexity-wbhi.onrender.com/api/auth/verify-email?token=${emailVerifyToken}">Verify Email</a>
               <p> if you did not sign up for this account, please ignore this email.</p>
               <p>Thank you </p>`
              
@@ -92,7 +92,12 @@ export const loginController=async (req,res)=>{
         expiresIn:"7d"
     })
 
-    res.cookie("token",token)
+    res.cookie("token",token,{
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
 
     res.status(200).json({
         message:"login successful",
@@ -151,7 +156,7 @@ export const verifyEmailController=async (req,res)=>{
 
     const html=`<h1>Email Verified Successfully</h1>
                 <p>Thank you for verifying your email. You can now log in to your account.</p>
-                <a href="http://localhost:3000/api/auth/login">Login</a>`
+                <a href="https://perplexity-wbhi.onrender.com/api/auth/login">Login</a>`
 
            res.send(html)
             
