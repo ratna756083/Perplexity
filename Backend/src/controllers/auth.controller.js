@@ -2,7 +2,7 @@ import userModel from "../models/user.model.js";
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { sendEmail } from "../services/mail.services.js";
-import verifyUser from "../middleware/auth.middleware.js";
+
 
 
  export const registerController=async (req,res)=>{
@@ -135,9 +135,7 @@ export const getMeController=async (req,res)=>{
 export const verifyEmailController=async (req,res)=>{
     const {token}=req.query 
 
-    try{
-
-    
+    try{ 
     const decoded=jwt.verify(token,process.env.JWT_SECRET)
     const user=await userModel.findOne({email:decoded.email})
 
@@ -166,6 +164,27 @@ export const verifyEmailController=async (req,res)=>{
             success:false
         })
     }
+}
+
+
+
+export const logout=async (req,res)=>{
+    const token=req.cookies.token 
+    if(!token){
+        return res.status(404).json({
+            message:"token not provided"
+        })
+    }
+
+    res.clearCookie("token",{
+        httpOnly:true,
+        secure:true,
+        sameSite:"none"
+    })
+
+    res.status(200).json({
+        message:"logout successfully"
+    })
 }
 
 

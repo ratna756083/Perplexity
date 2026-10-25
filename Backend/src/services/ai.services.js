@@ -53,13 +53,16 @@ export async function generateResponce(messages){
 
 export async function generateChatTitle(message){
   const response=await mistralModel.invoke([
-    new SystemMessage(`You are helpful assistant that generates concise and descriptive titles for the chat convertions
-      User will provide you with the first message of a chat coversation and you will generate a title that captures the essence of the conversations in 2-4 words .The title should be clear 
-      relevent and engaging giving users a quike understanding of the chat topic
-      `),
+    new SystemMessage(`You generate short, natural chat titles from the first message. Rules:
+      - Return only the title text, no quotes, no explanation, no extra words.
+      - Keep it to 2 to 4 words.
+      - Make it clear, relevant, and sensible for everyday conversation topics.
+      - Use natural English and title case.
+      - If the message is vague, infer the likely topic and create a clean title.
+      - Examples: "Plan a trip to Bali" -> "Bali Trip Plan"; "Explain React hooks" -> "React Hooks"; "Help me write a cover letter" -> "Cover Letter Help"`),
 
-    new HumanMessage(`Generate title for a chat conversation based on following first message: "${message}"`)
+    new HumanMessage(`Generate a title for this chat based on the first message: "${message}"`)
   ])
 
-  return response.text
+  return response.text.trim()
 }

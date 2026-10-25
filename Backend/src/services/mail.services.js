@@ -11,9 +11,6 @@ const transporter=nodemailer.createTransport({
         clientId:process.env.GOOGLE_CLIENT_ID,
         clientSecret:process.env.GOOGLE_CLIENT_SECRET,
         refreshToken:process.env.GOOGLE_REFRESH_TOKEN
-    },
-    tls: {
-        rejectUnauthorized: false
     }
 })
 
@@ -24,7 +21,10 @@ transporter.verify()
 export const sendEmail = async ({ to, subject, html, text }) => {
     try {
         const mailOptions = {
-            from: process.env.GOOGLE_USER,
+            from: {
+                name: 'PerplexCity',
+                address: process.env.GOOGLE_USER
+            },
             to,
             subject,
             html,

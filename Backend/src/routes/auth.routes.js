@@ -1,5 +1,5 @@
 import {Router} from 'express'
-import {registerController,verifyEmailController,loginController,getMeController} from '../controllers/auth.controller.js'
+import {registerController,verifyEmailController,loginController,getMeController,logout} from '../controllers/auth.controller.js'
 import {validateRegister} from '../validators/auth.validator.js'
 import verifyUser from '../middleware/auth.middleware.js'
 
@@ -10,7 +10,7 @@ router.post('/login',loginController)
 router.get("/get-me",verifyUser,getMeController)
 router.get('/verify-email',verifyEmailController)
 
-
+router.get("/logout",verifyUser,logout)
 
 
 export default router

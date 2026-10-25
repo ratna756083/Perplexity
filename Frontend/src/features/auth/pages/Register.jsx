@@ -6,11 +6,21 @@ const Register = () => {
   const [username, setusername] = useState('')
   const [email, setemail] = useState('')
   const [password, setpassword] = useState('')
+  const [message, setMessage] = useState('')
+  const [isErrorMessage, setIsErrorMessage] = useState(false)
   const {handelRegister} =useAuth()
 
 async  function handelSubmit(e){
     e.preventDefault()
-await handelRegister({username,email,password})
+    setMessage('')
+    setIsErrorMessage(false)
+    const registration=await handelRegister({username,email,password})
+    if(registration?.user){
+      setMessage('Please verify your gmail')
+    } else if(registration?.success === false && registration.message){
+      setMessage(registration.message)
+      setIsErrorMessage(true)
+    }
 
   }
   return (
@@ -31,6 +41,12 @@ await handelRegister({username,email,password})
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Begin your PerplexCity journey</p>
               </div>
             </div>
+
+            {message && (
+              <p role={isErrorMessage ? 'alert' : 'status'} className={`mt-6 rounded-xl border px-4 py-3 text-center text-sm font-semibold ${isErrorMessage ? 'border-rose-400/30 bg-rose-400/10 text-rose-200' : 'border-teal-400/30 bg-teal-400/10 text-teal-200'}`}>
+                {message}
+              </p>
+            )}
 
             <form onSubmit={handelSubmit} className="mt-8 space-y-5">
               <div>

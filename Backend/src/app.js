@@ -1,7 +1,6 @@
 import express from 'express'
 import Authroutes from './routes/auth.routes.js'
 import charRouter from './routes/chat.routes.js'
-import connectDB from './config/database.js'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import morgan from 'morgan'
@@ -19,8 +18,6 @@ app.use(cors({
     methods:["GET","POST","PUT","PATCH"]
 }))
 
-
-connectDB()
 
 app.use('/api/auth',Authroutes)
 app.use('/api/chats',charRouter)

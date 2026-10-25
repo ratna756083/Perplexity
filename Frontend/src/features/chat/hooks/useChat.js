@@ -7,6 +7,15 @@ export const useChat = () => {
     const dispatch = useDispatch()
 
     async function handelSendMessage({ message, chatId }) {
+        // ✅ Show user message INSTANTLY in UI before waiting for API
+        if (chatId) {
+            dispatch(addNewMessage({
+                chatId,
+                content: message,
+                role: 'user'
+            }))
+        }
+
         dispatch(setIsLoading(true))
 
         try {
@@ -19,11 +28,15 @@ export const useChat = () => {
                     chatId: activeChatId,
                     title: chat?.title || 'New Chat'
                 }))
-                dispatch(addNewMessage({
-                    chatId: activeChatId,
-                    content: message,
-                    role: 'user'
-                }))
+
+                // Only add user message here if this was a NEW chat (no chatId existed yet)
+                if (!chatId) {
+                    dispatch(addNewMessage({
+                        chatId: activeChatId,
+                        content: message,
+                        role: 'user'
+                    }))
+                }
 
                 if (Aimessage) {
                     dispatch(addNewMessage({
@@ -71,7 +84,6 @@ export const useChat = () => {
     }
 
     async function handelOpenChats(chats,chatId){
-    //   if(chats[chatId]?.messages.length === 0){
           const data=await getMessages(chatId)
         const {messages}=data
         const formattedMessages=messages.map(msg=>({
@@ -83,7 +95,6 @@ export const useChat = () => {
             messages:formattedMessages
         }))
         dispatch(setCurrentChatId(chatId))
-    //   }
     }
 
     return {
