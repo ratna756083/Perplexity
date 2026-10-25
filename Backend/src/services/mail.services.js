@@ -2,13 +2,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import nodemailer from "nodemailer";
+import dns from "dns";
+
+// Force Node.js DNS to prefer IPv4
+dns.setDefaultResultOrder("ipv4first");
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
     secure: false,
     requireTLS: true,
-    family: 4,
 
     auth: {
         type: "OAuth2",
