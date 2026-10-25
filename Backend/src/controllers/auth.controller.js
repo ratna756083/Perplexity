@@ -8,7 +8,8 @@ import { sendEmail } from "../services/mail.services.js";
  export const registerController=async (req,res)=>{
     const {username,email,password}=req.body
 
-    const AlreadyUser=await userModel.findOne({
+    try {
+        const AlreadyUser=await userModel.findOne({
         $or:[{username},{email}]
     })
 
@@ -54,8 +55,18 @@ import { sendEmail } from "../services/mail.services.js";
         }
     })
 
+        
+    } catch (error) {
+        console.error("REGISTER ERROR:", error);
+
+        return res.status(500).json({
+            message: "Registration failed",
+            success: false,
+            error: error.message
+    })
 
 }
+ }
 
 
 export const loginController=async (req,res)=>{
