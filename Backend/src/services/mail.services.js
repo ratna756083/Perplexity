@@ -8,8 +8,6 @@ const transporter = nodemailer.createTransport({
     port: 587,
     secure: false,
     requireTLS: true,
-
-    // Force IPv4
     family: 4,
 
     auth: {
@@ -20,14 +18,14 @@ const transporter = nodemailer.createTransport({
         refreshToken: process.env.GOOGLE_REFRESH_TOKEN
     },
 
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 });
 
 export const sendEmail = async ({ to, subject, html, text }) => {
     try {
-        const mailOptions = {
+        const info = await transporter.sendMail({
             from: {
                 name: "PerplexCity",
                 address: process.env.GOOGLE_USER
@@ -36,15 +34,14 @@ export const sendEmail = async ({ to, subject, html, text }) => {
             subject,
             html,
             text
-        };
+        });
 
-        const info = await transporter.sendMail(mailOptions);
-
-        console.log("Email sent successfully:", info.messageId);
+        console.log("Email sent:", info.messageId);
 
         return info;
+
     } catch (error) {
-        console.error("Email sending failed:");
+        console.error("EMAIL ERROR");
         console.error("Code:", error.code);
         console.error("Command:", error.command);
         console.error("Message:", error.message);
