@@ -1,43 +1,43 @@
-import dotenv from 'dotenv'
-dotenv.config()
+import dotenv from "dotenv";
+dotenv.config();
 
-import nodemailer from 'nodemailer'
+import nodemailer from "nodemailer";
 
-const transporter=nodemailer.createTransport({
-    service:"gmail",
-    auth:{
-        type:"OAuth2",
-        user:process.env.GOOGLE_USER,
-        clientId:process.env.GOOGLE_CLIENT_ID,
-        clientSecret:process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken:process.env.GOOGLE_REFRESH_TOKEN
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+
+    auth: {
+        type: "OAuth2",
+        user: process.env.GOOGLE_USER,
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        refreshToken: process.env.GOOGLE_REFRESH_TOKEN
     }
-})
-
-transporter.verify()
-           .then(()=>{console.log("Transporter is ready to sends email")})
-           .catch((err)=>{console.error("Email transporter verification failed",err)})
+});
 
 export const sendEmail = async ({ to, subject, html, text }) => {
     try {
         const mailOptions = {
             from: {
-                name: 'PerplexCity',
+                name: "PerplexCity",
                 address: process.env.GOOGLE_USER
             },
             to,
             subject,
             html,
             text
-        }
+        };
 
-        const details = await transporter.sendMail(mailOptions)
+        const details = await transporter.sendMail(mailOptions);
 
-        console.log("Email sent:", details.messageId)
+        console.log("Email sent:", details.messageId);
 
-        return details
+        return details;
+
     } catch (error) {
-        console.error("Failed to send email:", error)
-        throw error
+        console.error("Failed to send email:", error);
+        throw error;
     }
-}
+};
