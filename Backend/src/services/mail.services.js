@@ -1,54 +1,29 @@
+
 import dotenv from "dotenv";
 dotenv.config();
 
-import nodemailer from "nodemailer";
-import dns from "dns";
+import { Resend } from "resend";
 
-// Force Node.js DNS to prefer IPv4
-dns.setDefaultResultOrder("ipv4first");
-
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,
-
-    auth: {
-        type: "OAuth2",
-        user: process.env.GOOGLE_USER,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN
-    },
-
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendEmail = async ({ to, subject, html, text }) => {
     try {
-        const info = await transporter.sendMail({
-            from: {
-                name: "PerplexCity",
-                address: process.env.GOOGLE_USER
-            },
+        const { data, error } = await resend.emails.send({
+            from: process.env.GOOGLE_USER,
             to,
             subject,
             html,
             text
         });
 
-        console.log("Email sent:", info.messageId);
+        if (error) {
+            throw new Error(error.message);
+        }
 
-        return info;
-
+        console.log("Email sent:", data?.id);
+        return data;
     } catch (error) {
-        console.error("EMAIL ERROR");
-        console.error("Code:", error.code);
-        console.error("Command:", error.command);
-        console.error("Message:", error.message);
-
+        console.error("EMAIL ERROR:", error.message);
         throw error;
     }
 };
