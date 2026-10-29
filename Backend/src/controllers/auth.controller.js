@@ -5,68 +5,110 @@ import { sendEmail } from "../services/mail.services.js";
 
 
 
- export const registerController=async (req,res)=>{
-    const {username,email,password}=req.body
+ 
+export const registerController = async (req, res) => {
+    const { username, email, password } = req.body;
 
     try {
-        const AlreadyUser=await userModel.findOne({
-        $or:[{username},{email}]
-    })
+        const normalizedEmail = email.trim().toLowerCase();
 
-    if(AlreadyUser){
-        return res.status(200).json({
-            message:"user already exist",
-            success:false
-        })
-    }
-    let hash=await bcrypt.hash(String(password),10)
+        // Check whether username or email already exists
+        const existingUser = await userModel.findOne({
+            $or: [
+                { username },
+                { email: normalizedEmail }
+            ]
+        });
 
-    let user=await userModel.create({
-        username,
-        email,
-        password:hash
-    })
-
-   const emailVerifyToken=jwt.sign({
-    email:user.email
-   },process.env.JWT_SECRET)
-    
-
-    await sendEmail({
-        to:email,
-        subject:"Welcome to Perplexity",
-        html:`<p>Hi ${username},</p>
-              <h1>Welcome to our app</h1>
-              <p>We are excited to have you on board. Please verify your email by clicking the link below:</p>
-              <a href="https://perplexity-wbhi.onrender.com/api/auth/verify-email?token=${emailVerifyToken}">Verify Email</a>
-              <p> if you did not sign up for this account, please ignore this email.</p>
-              <p>Thank you </p>`
-             
-
-    })
-
-    
-    res.status(201).json({
-        message:"user register sucessfully",
-        user:{
-            username:user.username,
-            email:user.email,
-            isVerified:user.isVerified
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: "Username or email already exists"
+            });
         }
-    })
 
-        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(
+            String(password),
+            10
+        );
+
+        // Create user as unverified
+        const user = await userModel.create({
+            username,
+            email: normalizedEmail,
+            password: hashedPassword,
+            isVerified: false
+        });
+
+        // Generate email verification token
+        const emailVerifyToken = jwt.sign(
+            { email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        const verifyUrl =
+            `https://perplexity-wbhi.onrender.com/api/auth/verify-email?token=${encodeURIComponent(emailVerifyToken)}`;
+
+        try {
+            await sendEmail({
+                to: user.email,
+                subject: "Verify your PerplexCity account",
+                html: `
+                    <h2>Welcome to PerplexCity, ${user.username}!</h2>
+                    <p>Please verify your email address to activate your account.</p>
+                    <a href="${verifyUrl}">Verify Email</a>
+                    <p>This link expires in 24 hours.</p>
+                `
+            });
+
+            return res.status(201).json({
+                success: true,
+                emailSent: true,
+                message: "Registration successful. Please check your email.",
+                user: {
+                    username: user.username,
+                    email: user.email,
+                    isVerified: user.isVerified
+                }
+            });
+
+        } catch (emailError) {
+            console.error(
+                "VERIFICATION EMAIL FAILED:",
+                emailError.message
+            );
+
+            return res.status(202).json({
+                success: true,
+                emailSent: false,
+                message: "Account created, but the verification email could not be sent. Please try again later.",
+                user: {
+                    username: user.username,
+                    email: user.email,
+                    isVerified: user.isVerified
+                }
+            });
+        }
+
     } catch (error) {
-        console.error("REGISTER ERROR:", error);
+        console.error("REGISTER ERROR:", error.message);
+
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "Username or email already exists"
+            });
+        }
 
         return res.status(500).json({
-            message: "Registration failed",
             success: false,
-            error: error.message
-    })
+            message: "Registration failed"
+        });
+    }
+};
 
-}
- }
 
 
 export const loginController=async (req,res)=>{
