@@ -131,7 +131,9 @@ const Dashboard = () => {
   const { handelLogout } = useAuth()
 
   const [input, setInput] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches
+  )
   const [logoutConfirm, setLogoutConfirm] = useState(false)
 
   const chats = useSelector((state) => state.chat.chats)
@@ -150,6 +152,14 @@ const Dashboard = () => {
   useEffect(() => {
     chat.initializeSocketConnection()
     chat.handelGetChats()
+  }, [])
+
+  useEffect(() => {
+    const desktopMedia = window.matchMedia('(min-width: 768px)')
+    const handleViewportChange = () => setSidebarOpen(desktopMedia.matches)
+
+    desktopMedia.addEventListener('change', handleViewportChange)
+    return () => desktopMedia.removeEventListener('change', handleViewportChange)
   }, [])
 
   // Auto-resize textarea
@@ -341,12 +351,56 @@ const Dashboard = () => {
         .prose-ai h1, .prose-ai h2, .prose-ai h3 { margin-top: 0.8rem; margin-bottom: 0.4rem; color: #fff; }
         .prose-ai pre { margin-bottom: 0.8rem; }
         .prose-ai blockquote { margin: 0.5rem 0; }
+
+        .dashboard-backdrop { display: none; }
+
+        @media (max-width: 767px) {
+          .dashboard-sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 20;
+            height: 100dvh;
+            box-shadow: 12px 0 36px rgba(0,0,0,0.35);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s cubic-bezier(0.4,0,0.2,1);
+          }
+          .dashboard-sidebar.is-open {
+            width: min(86vw, 300px) !important;
+            min-width: min(86vw, 300px) !important;
+            transform: translateX(0);
+          }
+          .dashboard-sidebar.is-closed {
+            width: 0 !important;
+            min-width: 0 !important;
+            transform: translateX(-100%);
+            border-right: 0 !important;
+            box-shadow: none;
+          }
+          .dashboard-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 19;
+            display: block;
+            border: 0;
+            background: rgba(0,0,0,0.55);
+          }
+          .dashboard-header { padding: 0 12px !important; gap: 8px !important; }
+          .dashboard-messages { padding: 20px 12px 12px !important; }
+          .welcome-content { padding: 0 4px; }
+          .welcome-title { font-size: clamp(1.2rem, 5vw, 1.5rem) !important; }
+          .suggestion-list { width: 100%; gap: 8px !important; }
+          .suggestion-chip { max-width: 100%; padding: 8px 12px !important; font-size: 0.75rem !important; }
+          .message-bubble { max-width: 88% !important; padding: 10px 13px !important; font-size: 0.86rem !important; }
+          .dashboard-composer { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
+          .composer-box { gap: 8px !important; padding: 10px 12px !important; }
+          .composer-input { min-width: 0; font-size: 16px !important; }
+          .input-hint { display: none; }
+        }
       `}</style>
 
       <main
         style={{
           height: '100dvh',
-          width: '100vw',
+          width: '100%',
           overflow: 'hidden',
           background: '#0d0e10',
           color: '#fff',
@@ -357,6 +411,8 @@ const Dashboard = () => {
       >
         {/* ══════════════ SIDEBAR ══════════════ */}
         <aside
+          className={`dashboard-sidebar ${sidebarOpen ? 'is-open' : 'is-closed'}`}
+          aria-hidden={!sidebarOpen}
           style={{
             width: sidebarOpen ? '272px' : '0px',
             minWidth: sidebarOpen ? '272px' : '0px',
@@ -533,6 +589,15 @@ const Dashboard = () => {
           </div>
         </aside>
 
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="dashboard-backdrop"
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* ══════════════ MAIN AREA ══════════════ */}
         <section
           style={{
@@ -547,6 +612,7 @@ const Dashboard = () => {
         >
           {/* ── Top Bar ── */}
           <div
+            className="dashboard-header"
             style={{
               background: 'rgba(13,14,16,0.92)',
               borderBottom: '1px solid rgba(255,255,255,0.055)',
@@ -563,6 +629,8 @@ const Dashboard = () => {
             {/* Sidebar toggle */}
             <button
               onClick={() => setSidebarOpen((v) => !v)}
+              aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+              aria-expanded={sidebarOpen}
               style={{
                 display: 'flex',
                 height: '30px',
@@ -607,9 +675,10 @@ const Dashboard = () => {
 
           {/* ── Messages area — fills ALL remaining height ── */}
           <div
-            className="custom-scroll"
+            className="custom-scroll dashboard-messages"
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: 'auto',
               overflowX: 'hidden',
               padding: '32px 20px 16px',
@@ -646,8 +715,8 @@ const Dashboard = () => {
                   <IconSparkle />
                 </div>
 
-                <div>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+                <div className="welcome-content">
+                  <h3 className="welcome-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
                     How can I help you today?
                   </h3>
                   <p style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
@@ -656,7 +725,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Suggestion chips */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', maxWidth: '580px' }}>
+                <div className="suggestion-list" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', maxWidth: '580px' }}>
                   {[
                     '✨ Explain quantum computing',
                     '⚛️ Write a React hook',
@@ -729,7 +798,7 @@ const Dashboard = () => {
 
                       {/* Bubble */}
                       <div
-                        className={isUser ? 'user-msg-bubble' : 'ai-msg-card'}
+                        className={`message-bubble ${isUser ? 'user-msg-bubble' : 'ai-msg-card'}`}
                         style={{
                           maxWidth: '75%',
                           borderRadius: isUser ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
@@ -889,6 +958,7 @@ const Dashboard = () => {
 
           {/* ── Input Bar ── */}
           <div
+            className="dashboard-composer"
             style={{
               flexShrink: 0,
               padding: '16px 20px 20px',
@@ -898,7 +968,7 @@ const Dashboard = () => {
           >
             <div style={{ margin: '0 auto', maxWidth: '800px' }}>
               <div
-                className="glass-input-box"
+                className="glass-input-box composer-box"
                 style={{
                   display: 'flex',
                   alignItems: 'flex-end',
@@ -909,6 +979,7 @@ const Dashboard = () => {
                 }}
               >
                 <textarea
+                  className="composer-input"
                   ref={textareaRef}
                   value={input}
                   onChange={handleInputChange}
@@ -954,7 +1025,7 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <p style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.62rem', color: 'rgba(255,255,255,0.2)', userSelect: 'none' }}>
+              <p className="input-hint" style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.62rem', color: 'rgba(255,255,255,0.2)', userSelect: 'none' }}>
                 <kbd style={{ borderRadius: '4px', background: 'rgba(255,255,255,0.05)', padding: '2px 5px', fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.28)' }}>Enter</kbd>
                 {' '}to send
                 &nbsp;·&nbsp;

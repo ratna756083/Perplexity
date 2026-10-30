@@ -12,13 +12,14 @@ const userSchema=new mongoose.Schema({
     
     password:{
         type:String,
-        required:[true,"password is required"],
+        required:()=>{
+           return !this.googleId
+        },
         select:false
     },
-    isVerified:{
-        type:Boolean,
-        default:false
-    }
+    googleId:{
+      type:String
+   }
 
     
 })

@@ -7,6 +7,14 @@ const router=Router()
 
 router.post('/register',validateRegister,registerController)
 router.post('/login',loginController)
+router.get("/google",passport.authenticate("google",{scope:["profile","email"]}))
+router.get("/google/callback",
+    passport.authenticate("google", {
+        session:false,
+        failureRedirect:"https://perplexity-frontend-9e0x.onrender.com/login"
+    }),
+        googleCallback
+    )
 router.get("/get-me",verifyUser,getMeController)
 router.get('/verify-email',verifyEmailController)
 
