@@ -4,6 +4,8 @@ import { ChatMistralAI } from "@langchain/mistralai"
 import { SystemMessage } from "langchain";
 import * as z from "zod"
 import { searchInternet } from "./internet.services.js";
+import dotenv from 'dotenv'
+dotenv.config()
 
 
 

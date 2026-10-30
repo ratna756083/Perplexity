@@ -1,7 +1,8 @@
 import {Router} from 'express'
-import {registerController,verifyEmailController,loginController,getMeController,logout} from '../controllers/auth.controller.js'
+import {registerController,loginController,getMeController,logout,googleCallback} from '../controllers/auth.controller.js'
 import {validateRegister} from '../validators/auth.validator.js'
 import verifyUser from '../middleware/auth.middleware.js'
+import passport from 'passport'
 
 const router=Router()
 
@@ -16,7 +17,7 @@ router.get("/google/callback",
         googleCallback
     )
 router.get("/get-me",verifyUser,getMeController)
-router.get('/verify-email',verifyEmailController)
+
 
 router.get("/logout",verifyUser,logout)
 
