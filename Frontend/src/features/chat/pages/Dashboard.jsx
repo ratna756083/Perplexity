@@ -77,7 +77,6 @@ const IconClose = () => (
 // ─── Generating / Typing indicator ────────────────────────────────────────────
 const GeneratingIndicator = () => (
   <div className="flex justify-start items-end gap-3">
-    {/* AI avatar */}
     <div
       className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
       style={{
@@ -88,7 +87,6 @@ const GeneratingIndicator = () => (
       <span style={{ color: '#20d9d2' }}><IconBot /></span>
     </div>
 
-    {/* Generating card */}
     <div
       className="flex flex-col gap-2 rounded-2xl rounded-bl-sm px-5 py-4"
       style={{
@@ -98,7 +96,6 @@ const GeneratingIndicator = () => (
         minWidth: '180px',
       }}
     >
-      {/* Dots */}
       <span className="flex gap-1.5 items-center">
         {[0, 1, 2].map((i) => (
           <span
@@ -113,7 +110,6 @@ const GeneratingIndicator = () => (
         ))}
         <span className="ml-1 text-xs font-medium" style={{ color: '#20d9d2' }}>Generating…</span>
       </span>
-      {/* Shimmer lines */}
       <div className="flex flex-col gap-1.5 mt-1">
         {[80, 60, 40].map((w, i) => (
           <div
@@ -150,18 +146,42 @@ const Dashboard = () => {
   const isLoading = useSelector((state) => state.chat.isLoading)
   const user = useSelector((state) => state.auth?.user)
 
-  const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
   const profileMenuRef = useRef(null)
 
-  // Auto-scroll on new messages
+  // Safe inner container scroll (never scrolls the entire window or hides the header)
+  const scrollToBottom = (smooth = true) => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    try {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      })
+    } catch {
+      el.scrollTop = el.scrollHeight
+    }
+  }
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollToBottom(true)
   }, [chats, currentChatId, isLoading])
 
   useEffect(() => {
     chat.initializeSocketConnection()
     chat.handelGetChats()
+  }, [])
+
+  // Lock window scroll to 0,0 so mobile browsers never stick or scroll the header off-screen
+  useEffect(() => {
+    const lockWindow = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0)
+      }
+    }
+    window.addEventListener('scroll', lockWindow, { passive: true })
+    return () => window.removeEventListener('scroll', lockWindow)
   }, [])
 
   useEffect(() => {
@@ -205,7 +225,6 @@ const Dashboard = () => {
     if (chatId !== currentChatId) {
       await chat.handelOpenChats(chats, chatId)
     }
-    // Auto close sidebar on mobile when a chat is selected
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setSidebarOpen(false)
     }
@@ -217,6 +236,8 @@ const Dashboard = () => {
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     await chat.handelSendMessage({ message: trimmed, chatId: currentChatId })
+    // Ensure scroll immediately updates
+    setTimeout(() => scrollToBottom(true), 50)
   }
 
   const handleKeyDown = (e) => {
@@ -261,7 +282,16 @@ const Dashboard = () => {
 
         *, *::before, *::after { box-sizing: border-box; }
 
-        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        html, body, #root {
+          height: 100%;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          position: fixed;
+          inset: 0;
+          touch-action: manipulation;
+        }
 
         @keyframes typingBounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
@@ -394,9 +424,10 @@ const Dashboard = () => {
           .dashboard-sidebar {
             position: fixed;
             inset: 0 auto 0 0;
-            z-index: 30;
+            z-index: 50;
+            height: 100%;
             height: 100dvh;
-            box-shadow: 12px 0 36px rgba(0,0,0,0.65);
+            box-shadow: 12px 0 36px rgba(0,0,0,0.75);
             transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s cubic-bezier(0.4,0,0.2,1);
           }
           .dashboard-sidebar.is-open {
@@ -414,21 +445,31 @@ const Dashboard = () => {
           .dashboard-backdrop {
             position: fixed;
             inset: 0;
-            z-index: 25;
+            z-index: 45;
             display: block;
             border: 0;
             background: rgba(0,0,0,0.65);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
           }
-          .dashboard-header { padding: 0 12px !important; gap: 8px !important; height: 50px !important; }
-          .dashboard-messages { padding: 16px 12px 12px !important; }
+          .dashboard-header {
+            padding: 0 12px !important;
+            gap: 8px !important;
+            height: 52px !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 25 !important;
+          }
+          .dashboard-messages {
+            padding: 16px 12px 12px !important;
+            overscroll-behavior-y: contain;
+          }
           .welcome-content { padding: 0 4px; }
           .welcome-title { font-size: clamp(1.2rem, 5vw, 1.5rem) !important; }
           .suggestion-list { width: 100%; gap: 8px !important; }
           .suggestion-chip { max-width: 100%; padding: 8px 12px !important; font-size: 0.75rem !important; }
           .message-bubble { max-width: 90% !important; padding: 10px 14px !important; font-size: 0.86rem !important; }
-          .dashboard-composer { padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
+          .dashboard-composer { padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
           .composer-box { gap: 8px !important; padding: 10px 12px !important; }
           .composer-input { min-width: 0; font-size: 16px !important; }
           .input-hint { display: none; }
@@ -437,13 +478,15 @@ const Dashboard = () => {
 
         @media (max-width: 480px) {
           .history-btn-text { display: none; }
-          .profile-dropdown-menu { width: min(92vw, 260px) !important; right: -4px !important; }
+          .profile-dropdown-menu { width: min(92vw, 270px) !important; right: 0px !important; }
         }
       `}</style>
 
       <main
         style={{
-          height: '100dvh',
+          position: 'fixed',
+          inset: 0,
+          height: '100%',
           width: '100%',
           overflow: 'hidden',
           background: '#0d0e10',
@@ -451,7 +494,6 @@ const Dashboard = () => {
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           display: 'flex',
           flexDirection: 'row',
-          position: 'relative',
         }}
       >
         {/* ══════════════ SIDEBAR (Chat History & Profile Drawer) ══════════════ */}
@@ -468,6 +510,7 @@ const Dashboard = () => {
             flexDirection: 'column',
             overflow: 'hidden',
             flexShrink: 0,
+            height: '100%',
           }}
         >
           {/* ── Logo & Mobile Close ── */}
@@ -671,23 +714,24 @@ const Dashboard = () => {
           />
         )}
 
-        {/* ══════════════ MAIN CHAT AREA ══════════════ */}
+        {/* ══════════════ MAIN CHAT AREA (Pinned & Responsive) ══════════════ */}
         <section
           style={{
             flex: 1,
             minWidth: 0,
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             background: '#0d0e10',
-            height: '100dvh',
             overflow: 'hidden',
+            position: 'relative',
           }}
         >
-          {/* ── Top Bar (Always Visible with History Toggle & User Profile) ── */}
+          {/* ── Top Bar (Always Pinned & Never Scrolls Off) ── */}
           <div
             className="dashboard-header"
             style={{
-              background: 'rgba(13,14,16,0.95)',
+              background: 'rgba(13,14,16,0.96)',
               borderBottom: '1px solid rgba(255,255,255,0.06)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
@@ -698,7 +742,7 @@ const Dashboard = () => {
               gap: '10px',
               padding: '0 16px',
               position: 'relative',
-              zIndex: 20,
+              zIndex: 25,
             }}
           >
             {/* Left Controls: History Toggle & Quick New Chat */}
@@ -860,7 +904,7 @@ const Dashboard = () => {
                     boxShadow: '0 20px 50px rgba(0,0,0,0.7), 0 0 20px rgba(32,217,210,0.1)',
                     backdropFilter: 'blur(24px)',
                     WebkitBackdropFilter: 'blur(24px)',
-                    zIndex: 50,
+                    zIndex: 100,
                     animation: 'msgFadeSlide 0.2s cubic-bezier(0.16,1,0.3,1) forwards',
                   }}
                 >
@@ -993,15 +1037,16 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* ── Messages area ── */}
+          {/* ── Messages Container (Only this scrolls; never scrolls window) ── */}
           <div
+            ref={messagesContainerRef}
             className="custom-scroll dashboard-messages"
             style={{
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
               overflowX: 'hidden',
-              padding: '32px 20px 16px',
+              padding: '24px 20px 16px',
             }}
           >
             {!currentChatId || currentMessages.length === 0 ? (
@@ -1009,7 +1054,7 @@ const Dashboard = () => {
               <div
                 style={{
                   display: 'flex',
-                  height: '100%',
+                  minHeight: '100%',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1268,21 +1313,19 @@ const Dashboard = () => {
                   )
                 })}
 
-                {/* ✅ Beautiful Generating indicator */}
+                {/* ✅ Generating indicator */}
                 {isLoading && <GeneratingIndicator />}
-
-                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
 
-          {/* ── Input Bar ── */}
+          {/* ── Input Bar (Pinned at Bottom) ── */}
           <div
             className="dashboard-composer"
             style={{
               flexShrink: 0,
-              padding: '16px 20px 20px',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
+              padding: '14px 16px 16px',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
               background: 'rgba(13,14,16,0.98)',
             }}
           >
@@ -1292,9 +1335,9 @@ const Dashboard = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'flex-end',
-                  gap: '12px',
+                  gap: '10px',
                   borderRadius: '18px',
-                  padding: '14px 16px',
+                  padding: '12px 14px',
                   border: '1px solid rgba(255,255,255,0.09)',
                 }}
               >
@@ -1315,7 +1358,7 @@ const Dashboard = () => {
                     color: 'rgba(255,255,255,0.9)',
                     outline: 'none',
                     lineHeight: '1.6',
-                    maxHeight: '140px',
+                    maxHeight: '130px',
                     minHeight: '26px',
                     opacity: isLoading ? 0.45 : 1,
                     fontFamily: 'inherit',
