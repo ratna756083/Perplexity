@@ -1,14 +1,9 @@
-import http from 'http'
 import dotenv from 'dotenv'
-import { fileURLToPath } from 'node:url'
-
-dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) })
-
-const [{ default: app }, { initSocket }, { default: connectDB }] = await Promise.all([
-    import("./src/app.js"),
-    import("./src/sockets/server.socket.js"),
-    import("./src/config/database.js")
-])
+dotenv.config()
+import app from "./src/app.js"
+import http from 'http'
+import { initSocket } from "./src/sockets/server.socket.js"
+import connectDB from "./src/config/database.js"
 
 const server=http.createServer(app)
 
