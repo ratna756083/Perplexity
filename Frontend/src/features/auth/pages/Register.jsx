@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
+import { useNavigate } from 'react-router'
 
 /* ─────────────────────────────────────────────────────────────
    STITCH DESIGN SYSTEM - ICONS & GRAPHICS
@@ -80,6 +81,7 @@ const IconCircle = () => (
 ───────────────────────────────────────────────────────────── */
 
 const Register = () => {
+  const navigate=useNavigate()
   const [username, setusername] = useState('')
   const [email, setemail] = useState('')
   const [password, setpassword] = useState('')
@@ -124,6 +126,7 @@ const Register = () => {
 
     try {
       const registration = await handelRegister({ username, email, password })
+      navigate("/")
       if (registration?.user) {
         setMessage('Node allocated successfully! Please verify your email.')
       } else if (registration?.success === false && registration.message) {

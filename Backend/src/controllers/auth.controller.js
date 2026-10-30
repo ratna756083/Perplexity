@@ -72,14 +72,14 @@ export const  googleCallback=async (req,res)=>{
     let user=await userModel.findOne({email})
     if(!user){
         user=await userModel.create({
-            fullname:displayName,
+            username:displayName,
             email,
             googleId:id
         })
     }
     const token=jwt.sign({
         userId:user._id
-    },config.JWT_SECRET,
+    },process.env.JWT_SECRET,
     {expiresIn:"7d"})
   res.cookie("token",token,{
      httpOnly: true,
@@ -181,6 +181,5 @@ export const logout=async (req,res)=>{
         message:"logout successfully"
     })
 }
-
 
 
