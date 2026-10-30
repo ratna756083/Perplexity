@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { setCurrentChatId } from '../chat.slice'
 
 // ─── Inline SVG Icons ──────────────────────────────────────────────────────────
 
@@ -67,6 +68,12 @@ const IconMenu = () => (
   </svg>
 )
 
+const IconClose = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
 // ─── Generating / Typing indicator ────────────────────────────────────────────
 const GeneratingIndicator = () => (
   <div className="flex justify-start items-end gap-3">
@@ -128,6 +135,7 @@ const GeneratingIndicator = () => (
 // ─── Dashboard ──────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const chat = useChat()
+  const dispatch = useDispatch()
   const { handelLogout } = useAuth()
 
   const [input, setInput] = useState('')
@@ -135,6 +143,7 @@ const Dashboard = () => {
     () => typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches
   )
   const [logoutConfirm, setLogoutConfirm] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
   const chats = useSelector((state) => state.chat.chats)
   const currentChatId = useSelector((state) => state.chat.currentChatId)
@@ -143,6 +152,7 @@ const Dashboard = () => {
 
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const profileMenuRef = useRef(null)
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -162,6 +172,17 @@ const Dashboard = () => {
     return () => desktopMedia.removeEventListener('change', handleViewportChange)
   }, [])
 
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   // Auto-resize textarea
   const handleInputChange = (e) => {
     setInput(e.target.value)
@@ -172,9 +193,22 @@ const Dashboard = () => {
     }
   }
 
+  const handleNewChat = () => {
+    dispatch(setCurrentChatId(null))
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
+  }
+
   const openChat = async (chatId) => {
-    if (!chatId || chatId === currentChatId) return
-    await chat.handelOpenChats(chats, chatId)
+    if (!chatId) return
+    if (chatId !== currentChatId) {
+      await chat.handelOpenChats(chats, chatId)
+    }
+    // Auto close sidebar on mobile when a chat is selected
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
   }
 
   const handleSendMessage = async () => {
@@ -353,19 +387,21 @@ const Dashboard = () => {
         .prose-ai blockquote { margin: 0.5rem 0; }
 
         .dashboard-backdrop { display: none; }
+        .history-btn-text { display: inline; }
+        .generating-text { display: inline; }
 
         @media (max-width: 767px) {
           .dashboard-sidebar {
             position: fixed;
             inset: 0 auto 0 0;
-            z-index: 20;
+            z-index: 30;
             height: 100dvh;
-            box-shadow: 12px 0 36px rgba(0,0,0,0.35);
+            box-shadow: 12px 0 36px rgba(0,0,0,0.65);
             transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s cubic-bezier(0.4,0,0.2,1);
           }
           .dashboard-sidebar.is-open {
-            width: min(86vw, 300px) !important;
-            min-width: min(86vw, 300px) !important;
+            width: min(86vw, 310px) !important;
+            min-width: min(86vw, 310px) !important;
             transform: translateX(0);
           }
           .dashboard-sidebar.is-closed {
@@ -378,22 +414,30 @@ const Dashboard = () => {
           .dashboard-backdrop {
             position: fixed;
             inset: 0;
-            z-index: 19;
+            z-index: 25;
             display: block;
             border: 0;
-            background: rgba(0,0,0,0.55);
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
           }
-          .dashboard-header { padding: 0 12px !important; gap: 8px !important; }
-          .dashboard-messages { padding: 20px 12px 12px !important; }
+          .dashboard-header { padding: 0 12px !important; gap: 8px !important; height: 50px !important; }
+          .dashboard-messages { padding: 16px 12px 12px !important; }
           .welcome-content { padding: 0 4px; }
           .welcome-title { font-size: clamp(1.2rem, 5vw, 1.5rem) !important; }
           .suggestion-list { width: 100%; gap: 8px !important; }
           .suggestion-chip { max-width: 100%; padding: 8px 12px !important; font-size: 0.75rem !important; }
-          .message-bubble { max-width: 88% !important; padding: 10px 13px !important; font-size: 0.86rem !important; }
-          .dashboard-composer { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important; }
+          .message-bubble { max-width: 90% !important; padding: 10px 14px !important; font-size: 0.86rem !important; }
+          .dashboard-composer { padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
           .composer-box { gap: 8px !important; padding: 10px 12px !important; }
           .composer-input { min-width: 0; font-size: 16px !important; }
           .input-hint { display: none; }
+          .generating-text { display: none; }
+        }
+
+        @media (max-width: 480px) {
+          .history-btn-text { display: none; }
+          .profile-dropdown-menu { width: min(92vw, 260px) !important; right: -4px !important; }
         }
       `}</style>
 
@@ -407,9 +451,10 @@ const Dashboard = () => {
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           display: 'flex',
           flexDirection: 'row',
+          position: 'relative',
         }}
       >
-        {/* ══════════════ SIDEBAR ══════════════ */}
+        {/* ══════════════ SIDEBAR (Chat History & Profile Drawer) ══════════════ */}
         <aside
           className={`dashboard-sidebar ${sidebarOpen ? 'is-open' : 'is-closed'}`}
           aria-hidden={!sidebarOpen}
@@ -425,27 +470,51 @@ const Dashboard = () => {
             flexShrink: 0,
           }}
         >
-          {/* ── Logo ── */}
+          {/* ── Logo & Mobile Close ── */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              padding: '18px 20px',
+              justifyContent: 'space-between',
+              padding: '16px 18px',
               borderBottom: '1px solid rgba(255,255,255,0.05)',
               flexShrink: 0,
             }}
           >
-            <IconSparkle />
-            <span className="gradient-title" style={{ fontSize: '1.2rem', fontWeight: 600, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-              Perplexity
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <IconSparkle />
+              <span className="gradient-title" style={{ fontSize: '1.15rem', fontWeight: 600, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                Perplexity
+              </span>
+            </div>
+
+            {/* Mobile close drawer button */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden"
+              aria-label="Close chat history"
+              style={{
+                display: 'flex',
+                height: '28px',
+                width: '28px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.06)',
+                color: 'rgba(255,255,255,0.6)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <IconClose />
+            </button>
           </div>
 
-          {/* ── New Chat ── */}
+          {/* ── New Chat Action ── */}
           <div style={{ padding: '14px 16px 8px', flexShrink: 0 }}>
             <button
-              onClick={() => chat.handelGetChats()}
+              onClick={handleNewChat}
               className="new-chat-btn"
               style={{
                 display: 'flex',
@@ -457,27 +526,30 @@ const Dashboard = () => {
                 padding: '10px 16px',
                 fontSize: '0.85rem',
                 fontWeight: 500,
-                color: 'rgba(255,255,255,0.75)',
+                color: 'rgba(255,255,255,0.85)',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
             >
               <IconPlus />
-              New Chat
+              New Conversation
             </button>
           </div>
 
           {/* ── Section label ── */}
-          <div style={{ padding: '4px 20px 6px', flexShrink: 0 }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
-              Recent
+          <div style={{ padding: '6px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
+              Chat History
+            </span>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(32,217,210,0.7)', fontWeight: 600 }}>
+              {chatList.length}
             </span>
           </div>
 
           {/* ── Chat List ── */}
-          <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', padding: '2px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {chatList.length === 0 ? (
-              <div style={{ padding: '32px 8px', textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', lineHeight: 1.6 }}>
+              <div style={{ padding: '32px 8px', textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
                 No conversations yet.<br />Start chatting below.
               </div>
             ) : (
@@ -496,10 +568,10 @@ const Dashboard = () => {
                     textAlign: 'left',
                     fontSize: '0.82rem',
                     borderLeft: currentChatId === c.id ? undefined : '2.5px solid transparent',
-                    color: currentChatId === c.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)',
+                    color: currentChatId === c.id ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)',
                     background: currentChatId === c.id ? undefined : 'transparent',
                     cursor: 'pointer',
-                    animationDelay: `${i * 20}ms`,
+                    animationDelay: `${i * 15}ms`,
                     position: 'relative',
                   }}
                   onMouseEnter={e => { if (currentChatId !== c.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
@@ -523,9 +595,9 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* ── User + Logout ── */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 16px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '12px', padding: '8px 10px' }}>
+          {/* ── User Profile & Logout (Inside Sidebar) ── */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 14px', flexShrink: 0, background: 'rgba(17,18,21,0.9)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '12px', padding: '8px 10px', background: 'rgba(255,255,255,0.02)' }}>
               {/* Avatar */}
               <div
                 style={{
@@ -548,11 +620,11 @@ const Dashboard = () => {
 
               {/* Name + Email */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.83rem', fontWeight: 500, color: 'rgba(255,255,255,0.78)' }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.83rem', fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>
                   {user?.username || user?.email?.split('@')[0] || 'User'}
                 </div>
                 {user?.email && (
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>{user.email}</div>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>{user.email}</div>
                 )}
               </div>
 
@@ -569,26 +641,27 @@ const Dashboard = () => {
                   justifyContent: 'center',
                   borderRadius: '8px',
                   transition: 'all 0.2s',
-                  color: logoutConfirm ? '#f87171' : 'rgba(255,255,255,0.28)',
+                  color: logoutConfirm ? '#f87171' : 'rgba(255,255,255,0.35)',
                   background: logoutConfirm ? 'rgba(239,68,68,0.15)' : 'transparent',
                   outline: logoutConfirm ? '1px solid rgba(239,68,68,0.3)' : 'none',
                   cursor: 'pointer',
                 }}
                 onMouseEnter={e => { if (!logoutConfirm) { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#f87171' }}}
-                onMouseLeave={e => { if (!logoutConfirm) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.28)' }}}
+                onMouseLeave={e => { if (!logoutConfirm) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}}
               >
                 <IconLogout />
               </button>
             </div>
 
             {logoutConfirm && (
-              <p style={{ marginTop: '6px', textAlign: 'center', fontSize: '0.62rem', color: 'rgba(248,113,113,0.8)', lineHeight: 1.4 }}>
+              <p style={{ marginTop: '6px', textAlign: 'center', fontSize: '0.62rem', color: 'rgba(248,113,113,0.85)', lineHeight: 1.4 }}>
                 Click again to confirm logout
               </p>
             )}
           </div>
         </aside>
 
+        {/* Backdrop for mobile when sidebar is open */}
         {sidebarOpen && (
           <button
             type="button"
@@ -598,7 +671,7 @@ const Dashboard = () => {
           />
         )}
 
-        {/* ══════════════ MAIN AREA ══════════════ */}
+        {/* ══════════════ MAIN CHAT AREA ══════════════ */}
         <section
           style={{
             flex: 1,
@@ -610,70 +683,317 @@ const Dashboard = () => {
             overflow: 'hidden',
           }}
         >
-          {/* ── Top Bar ── */}
+          {/* ── Top Bar (Always Visible with History Toggle & User Profile) ── */}
           <div
             className="dashboard-header"
             style={{
-              background: 'rgba(13,14,16,0.92)',
-              borderBottom: '1px solid rgba(255,255,255,0.055)',
+              background: 'rgba(13,14,16,0.95)',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
               display: 'flex',
               height: '52px',
               flexShrink: 0,
               alignItems: 'center',
-              gap: '12px',
-              padding: '0 20px',
+              gap: '10px',
+              padding: '0 16px',
+              position: 'relative',
+              zIndex: 20,
             }}
           >
-            {/* Sidebar toggle */}
-            <button
-              onClick={() => setSidebarOpen((v) => !v)}
-              aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-              aria-expanded={sidebarOpen}
-              style={{
-                display: 'flex',
-                height: '30px',
-                width: '30px',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '8px',
-                color: 'rgba(255,255,255,0.35)',
-                transition: 'all 0.2s',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}
-            >
-              <IconMenu />
-            </button>
+            {/* Left Controls: History Toggle & Quick New Chat */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <button
+                onClick={() => setSidebarOpen((v) => !v)}
+                aria-label={sidebarOpen ? 'Hide chat history' : 'Show chat history'}
+                aria-expanded={sidebarOpen}
+                style={{
+                  display: 'flex',
+                  height: '32px',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '0 10px',
+                  borderRadius: '8px',
+                  color: sidebarOpen ? '#20d9d2' : 'rgba(255,255,255,0.7)',
+                  background: sidebarOpen ? 'rgba(32,217,210,0.1)' : 'rgba(255,255,255,0.05)',
+                  border: sidebarOpen ? '1px solid rgba(32,217,210,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 500,
+                }}
+                title="Chat History"
+              >
+                <IconMenu />
+                <span className="history-btn-text">History</span>
+                {chatList.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: '0.62rem',
+                      padding: '1px 5px',
+                      borderRadius: '999px',
+                      background: 'rgba(255,255,255,0.08)',
+                      color: 'rgba(255,255,255,0.7)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {chatList.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={handleNewChat}
+                style={{
+                  display: 'flex',
+                  height: '32px',
+                  width: '32px',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.75)',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
+                }}
+                title="New Chat"
+              >
+                <IconPlus />
+              </button>
+            </div>
 
             <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
 
-            <h2 style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem', fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>
+            {/* Title */}
+            <h2
+              style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                color: 'rgba(255,255,255,0.65)',
+                margin: 0,
+              }}
+            >
               {currentChatId ? currentChatTitle : 'Perplexity AI'}
             </h2>
 
-            {isLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                <span
+            {/* Right Controls: Generating & Profile Avatar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, position: 'relative' }} ref={profileMenuRef}>
+              {isLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span
+                    style={{
+                      display: 'block',
+                      height: '6px',
+                      width: '6px',
+                      borderRadius: '50%',
+                      background: '#20d9d2',
+                      animation: 'typingBounce 1s ease-in-out infinite',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'rgba(32,217,210,0.85)', fontWeight: 500 }} className="generating-text">
+                    Generating…
+                  </span>
+                </div>
+              )}
+
+              {/* Permanent Profile Button (Always visible on mobile & desktop) */}
+              <button
+                type="button"
+                onClick={() => setProfileMenuOpen((v) => !v)}
+                aria-label="User Profile"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '34px',
+                  width: '34px',
+                  borderRadius: '50%',
+                  padding: '2px',
+                  background: profileMenuOpen
+                    ? 'linear-gradient(135deg, #20d9d2, #1e90ff)'
+                    : 'linear-gradient(135deg, rgba(32,217,210,0.4), rgba(30,144,255,0.4))',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: profileMenuOpen ? '0 0 12px rgba(32,217,210,0.45)' : 'none',
+                }}
+                title={user?.username || user?.email || 'Profile'}
+              >
+                <div
                   style={{
-                    display: 'block',
-                    height: '6px',
-                    width: '6px',
+                    width: '100%',
+                    height: '100%',
                     borderRadius: '50%',
-                    background: '#20d9d2',
-                    animation: 'typingBounce 1s ease-in-out infinite',
+                    background: '#0d0e10',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#20d9d2',
                   }}
-                />
-                <span style={{ fontSize: '0.7rem', color: 'rgba(32,217,210,0.7)', fontWeight: 500 }}>Generating…</span>
-              </div>
-            )}
+                >
+                  {initials}
+                </div>
+              </button>
+
+              {/* Profile Dropdown Menu */}
+              {profileMenuOpen && (
+                <div
+                  className="profile-dropdown-menu"
+                  style={{
+                    position: 'absolute',
+                    top: '44px',
+                    right: '0px',
+                    width: '260px',
+                    background: '#15171d',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.7), 0 0 20px rgba(32,217,210,0.1)',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    zIndex: 50,
+                    animation: 'msgFadeSlide 0.2s cubic-bezier(0.16,1,0.3,1) forwards',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #20d9d2, #1e90ff)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: '#fff',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {initials}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {user?.username || user?.email?.split('@')[0] || 'User'}
+                      </div>
+                      {user?.email && (
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user.email}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(32,217,210,0.08)',
+                      border: '1px solid rgba(32,217,210,0.2)',
+                      fontSize: '0.72rem',
+                      color: '#20d9d2',
+                      fontWeight: 500,
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#20d9d2', display: 'inline-block' }} />
+                    <span>Neural Node • Online</span>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false)
+                        setSidebarOpen(true)
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        color: 'rgba(255,255,255,0.85)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <IconMessage />
+                      <span>Chat History ({chatList.length})</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false)
+                        handleNewChat()
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        color: 'rgba(255,255,255,0.85)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <IconPlus />
+                      <span>New Chat</span>
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        color: logoutConfirm ? '#f87171' : 'rgba(248,113,113,0.85)',
+                        background: logoutConfirm ? 'rgba(239,68,68,0.15)' : 'transparent',
+                        border: logoutConfirm ? '1px solid rgba(239,68,68,0.3)' : 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        marginTop: '4px',
+                      }}
+                    >
+                      <IconLogout />
+                      <span>{logoutConfirm ? 'Confirm Logout?' : 'Sign Out'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* ── Messages area — fills ALL remaining height ── */}
+          {/* ── Messages area ── */}
           <div
             className="custom-scroll dashboard-messages"
             style={{
